@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: telegram-forward-bot
+    env: python
+    region: frankfurt
+    buildCommand: ""
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: CHANNELS
+        sync: false
