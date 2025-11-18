@@ -1,33 +1,28 @@
+from fastapi import FastAPI, Request
+import requests
 import os
-import asyncio
-from aiogram import Bot, Dispatcher, types
-from aiogram.enums.parse_mode import ParseMode
-from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
-from aiohttp import web
 
-TOKEN = os.getenv("BOT_TOKEN")
-CHANNELS = os.getenv("CHANNELS").split(",")
+app = FastAPI()
 
-bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
-dp = Dispatcher()
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHANNELS = os.getenv("CHANNELS", "").split(",")
 
-@dp.message()
-async def forward_message(message: types.Message):
-    for channel_id in CHANNELS:
-        if message.text:
-            await bot.send_message(channel_id, message.text)
-        elif message.photo:
-            await bot.send_photo(channel_id, message.photo[-1].file_id, caption=message.caption)
-        elif message.video:
-            await bot.send_video(channel_id, message.video.file_id, caption=message.caption)
-        elif message.document:
-            await bot.send_document(channel_id, message.document.file_id, caption=message.caption)
-    await message.answer("✔️ Forwarded.")
+TELEGRAM_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
-async def start():
-    app = web.Application()
-    SimpleRequestHandler(dp, bot).register(app, path="/webhook")
-    setup_application(app, dp)
-    return app
 
-app = asyncio.run(start())
+@app.post("/webhook")
+async def webhook(request: Request):
+    data = await request.json()
+    
+    if "message" in data:
+        text = data["message"].get("text", "")
+        
+        # Forward to all channels
+        for channel in CHANNELS:
+            if channel:
+                requests.post(
+                    f"{TELEGRAM_API_URL}/sendMessage",
+                    json={"chat_id": int(channel), "text": text}
+                )
+
+    return {"ok": True}
